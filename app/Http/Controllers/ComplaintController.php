@@ -28,7 +28,7 @@ class ComplaintController extends Controller
 
         ///admin dan dev bisa melihat semua
 
-        $complaints =  $query->latest()->paginate(10);
+        $complaints =  $query->latest()->get();
 
         return view('complaints.index', compact('complaints'));
         
