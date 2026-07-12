@@ -38,6 +38,7 @@ class CategoryController extends Controller
         $this->authorizeAccess();
 
         $validated = $request->validate([
+            // Nama tabel database adalah categories
             'name' => 'required|string|max:50|unique:categories,name',
         ]);
 
@@ -45,16 +46,6 @@ class CategoryController extends Controller
 
         return redirect()->route('categories.index')
             ->with('success', 'Kategori berhasil ditambahkan.');
-    }
-
-    /**
-     * Tampilkan detail kategori (opsional, bisa langsung redirect ke index).
-     */
-    public function show(Category $category)
-    {
-        $this->authorizeAccess();
-
-        return view('categories.show', compact('category'));
     }
 
     /**
@@ -67,6 +58,9 @@ class CategoryController extends Controller
         return view('categories.edit', compact('category'));
     }
 
+    public function show(Category $category) {
+        abort(404);
+    }
     /**
      * Update kategori.
      */
