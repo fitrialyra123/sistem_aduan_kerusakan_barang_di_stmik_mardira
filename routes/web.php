@@ -14,10 +14,6 @@ Route::get('/', function () {
     return view('welcome');
 });
 
-// Route::get('/dashboard', function () {
-//     return view('dashboard');
-// })->middleware(['auth', 'verified'])->name('dashboard');
-
 Route::get('/dashboard', [DashboardController::class, 'index'])->middleware('auth')->name('dashboard');
 
 Route::middleware('auth')->group(function () {
@@ -35,7 +31,7 @@ Route::middleware('auth')->group(function () {
 
 
 Route::middleware(['auth', 'role:admin,dev'])->group(function() {
-    Route::resource('location', LocationController::class);
+    Route::resource('locations', LocationController::class);
     Route::resource('categories', CategoryController::class);
     Route::resource('users', UserController::class);
 });

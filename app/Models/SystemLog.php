@@ -20,8 +20,9 @@ class SystemLog extends Model
         'exception_message',
         'exception_trace',
         'is_error',
+        'context',
     ];
-
+    
     protected $casts = [
         'created_at' => 'datetime',
         'updated_at' => 'datetime',

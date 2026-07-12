@@ -11,6 +11,7 @@ class LocationController extends Controller
     public function index()
     {
         $this->authorizeAccess();
+        // Menggunakan get() sudah tepat jika nanti dipadukan dengan DataTables
         $locations = Location::orderBy('room_name')->get();
         return view('locations.index', compact('locations'));
     }
@@ -33,6 +34,21 @@ class LocationController extends Controller
 
         return redirect()->route('locations.index')
             ->with('success', 'Lokasi berhasil ditambahkan.');
+    }
+
+    /**
+     * Menampilkan detail lokasi beserta riwayat pengaduan di lokasi tersebut.
+     */
+    public function show(Location $location)
+    {
+        $this->authorizeAccess();
+
+        // Memuat relasi complaints (pengaduan) yang terkait dengan ruangan ini.
+        // Jika Anda ingin menampilkan siapa pelapornya dan kategorinya, 
+        // Anda bisa menggunakan nested eager loading: $location->load(['complaints.user', 'complaints.category']);
+        $location->load('complaints');
+
+        return view('locations.show', compact('location'));
     }
 
     public function edit(Location $location)
@@ -59,6 +75,7 @@ class LocationController extends Controller
     {
         $this->authorizeAccess();
 
+        // Perlindungan yang sangat baik agar relasi data tidak rusak
         if ($location->complaints()->exists()) {
             return redirect()->route('locations.index')
                 ->with('error', 'Lokasi tidak bisa dihapus karena masih digunakan oleh pengaduan.');
