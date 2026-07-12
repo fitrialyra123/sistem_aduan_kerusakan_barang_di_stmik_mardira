@@ -25,7 +25,9 @@ class User extends Authenticatable
         'nomor_identitas',
         'password',
         'role',
-
+        'is_verified',   
+        'verified_by',   
+        'verified_at',
     ];
 
     /**
@@ -48,18 +50,35 @@ class User extends Authenticatable
         return [
             'email_verified_at' => 'datetime',
             'password' => 'hashed',
+            'is_verified' => 'boolean',
+            'verified_at' => 'datetime',
         ];
     }
 
-    public function complaints() {
+    public function complaints()
+    {
         return $this->hasMany(Complaint::class, 'user_id');
     }
 
-    public function assignedCompalaints() {
+    // NOTE: sebelumnya bernama assignedCompalaints() (typo).
+    // Sudah diperbaiki menjadi assignedComplaints() agar konsisten
+    // dengan pemanggilan di UserController. Pastikan cari & ganti
+    // referensi lama (assignedCompalaints) di file lain jika ada.
+    public function assignedComplaints()
+    {
         return $this->hasMany(Complaint::class, 'assigned_to');
     }
 
-    public function compalintslogs() {
+    public function complaintLogs()
+    {
         return $this->hasMany(ComplaintLog::class, 'actor_id');
+    }
+
+    /**
+     * Relasi ke user (admin/dev) yang memverifikasi nomor_identitas ini.
+     */
+    public function verifier()
+    {
+        return $this->belongsTo(User::class, 'verified_by');
     }
 }

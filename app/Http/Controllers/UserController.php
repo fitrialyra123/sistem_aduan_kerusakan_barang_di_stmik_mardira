@@ -12,11 +12,10 @@ class UserController extends Controller
 {
     /**
      * Tampilkan daftar pengguna (dengan filter opsional).
+     * Otorisasi akses halaman ditangani middleware route (mis. role:admin,dev).
      */
     public function index(Request $request)
     {
-        $this->authorizeAccess();
-
         $query = User::query()->orderBy('name');
 
         // Filter role
@@ -49,8 +48,6 @@ class UserController extends Controller
      */
     public function create()
     {
-        $this->authorizeAccess();
-
         return view('users.create');
     }
 
@@ -59,8 +56,6 @@ class UserController extends Controller
      */
     public function store(Request $request)
     {
-        $this->authorizeAccess();
-
         $validated = $request->validate([
             'name' => 'required|string|max:50',
             'email' => 'required|email|max:50|unique:users,email',
@@ -84,12 +79,22 @@ class UserController extends Controller
     }
 
     /**
+     * Tampilkan detail satu pengguna.
+     */
+    public function show(User $user)
+    {
+        if (Auth::user()->role === 'dev' && $user->role === 'teknisi') {
+            abort(403, 'Dev tidak dapat melihat detail akun teknisi.');
+        }
+
+        return view('users.show', compact('user'));
+    }
+
+    /**
      * Form edit pengguna.
      */
     public function edit(User $user)
     {
-        $this->authorizeAccess();
-
         // Dev tidak boleh mengedit teknisi
         if (Auth::user()->role === 'dev' && $user->role === 'teknisi') {
             abort(403, 'Dev tidak dapat mengedit akun teknisi.');
@@ -103,8 +108,6 @@ class UserController extends Controller
      */
     public function update(Request $request, User $user)
     {
-        $this->authorizeAccess();
-
         // Dev tidak boleh mengedit teknisi
         if (Auth::user()->role === 'dev' && $user->role === 'teknisi') {
             abort(403, 'Dev tidak dapat mengedit akun teknisi.');
@@ -119,14 +122,30 @@ class UserController extends Controller
             'password' => 'nullable|string|min:8|confirmed',
         ]);
 
-        // Password hanya diupdate jika diisi
-        if (empty($validated['password'])) {
-            unset($validated['password']);
-        } else {
-            $validated['password'] = Hash::make($validated['password']);
+        // Jika nomor_identitas diubah, reset status verifikasi
+        // supaya harus diverifikasi ulang oleh admin/dev.
+        if ($validated['nomor_identitas'] !== $user->nomor_identitas) {
+            $validated['is_verified'] = false;
+            $validated['verified_by'] = null;
+            $validated['verified_at'] = null;
         }
 
-        $user->update($validated);
+        $data = $request->except(['password', 'password_confirmation']);
+        if ($request->filled('password')) {
+            $data['password'] = bcrypt($request->password);
+        } else {
+            unset($data['password']);
+        }
+
+        // Password hanya diupdate jika diisi
+        // if (empty($validated['password'])) {
+        //     unset($validated['password']);
+        // } else {
+        //     $validated['password'] = Hash::make($validated['password']);
+        // }
+
+        // $user->update($validated);
+        $user->update($data);
 
         return redirect()->route('users.index')
             ->with('success', 'Pengguna berhasil diperbarui.');
@@ -137,8 +156,6 @@ class UserController extends Controller
      */
     public function destroy(User $user)
     {
-        $this->authorizeAccess();
-
         // Tidak bisa menghapus diri sendiri
         if ($user->id === Auth::id()) {
             return redirect()->route('users.index')
@@ -163,12 +180,42 @@ class UserController extends Controller
     }
 
     /**
-     * Otorisasi dasar: Admin & Dev bisa mengakses, dengan batasan tambahan di tiap metode.
+     * Verifikasi nomor_identitas pengguna oleh admin/dev.
+     * Pastikan route ini dilindungi middleware role:admin,dev.
      */
-    protected function authorizeAccess()
+    public function verify(User $user)
     {
-        if (!in_array(Auth::user()->role, ['admin', 'dev'])) {
-            abort(403, 'Anda tidak memiliki izin mengelola pengguna.');
+        if (Auth::user()->role === 'dev' && $user->role === 'teknisi') {
+            abort(403, 'Dev tidak dapat memverifikasi akun teknisi.');
         }
+
+        if (empty($user->nomor_identitas)) {
+            return redirect()->route('users.index')
+                ->with('error', 'Pengguna belum mengisi nomor_identitas.');
+        }
+
+        $user->update([
+            'is_verified' => true,
+            'verified_by' => Auth::id(),
+            'verified_at' => now(),
+        ]);
+
+        return redirect()->route('users.index')
+            ->with('success', 'Nomor identitas pengguna berhasil diverifikasi.');
+    }
+
+    /**
+     * Batalkan status verifikasi (opsional, untuk koreksi kesalahan).
+     */
+    public function unverify(User $user)
+    {
+        $user->update([
+            'is_verified' => false,
+            'verified_by' => null,
+            'verified_at' => null,
+        ]);
+
+        return redirect()->route('users.index')
+            ->with('success', 'Verifikasi nomor identitas pengguna dibatalkan.');
     }
 }

@@ -34,6 +34,9 @@ Route::middleware(['auth', 'role:admin,dev'])->group(function() {
     Route::resource('locations', LocationController::class);
     Route::resource('categories', CategoryController::class);
     Route::resource('users', UserController::class);
+    Route::patch('users/{user}/verify', [UserController::class, 'verify'])->name('users.verify');
+    Route::patch('users/{user}/unverify', [UserController::class, 'unverify'])->name('users.unverify');
+
 });
 
 require __DIR__.'/auth.php';
