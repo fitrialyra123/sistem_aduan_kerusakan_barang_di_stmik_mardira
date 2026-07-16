@@ -11,7 +11,8 @@ class ComplaintLog extends Model
         'actor_id',
         'old_status',
         'new_status',
-        'log_messaage'
+        'log_message',
+        
     ];
 
     public function complaint() {

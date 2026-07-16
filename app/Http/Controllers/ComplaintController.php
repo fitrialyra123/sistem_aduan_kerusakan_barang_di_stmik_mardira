@@ -19,19 +19,18 @@ class ComplaintController extends Controller
     {
         $user = Auth::user();
         $query = Complaint::with(['user', 'location', 'category', 'assignedTechnician']);
-        //filer berdasarkan role
-        if($user->role === 'user') {
+        
+        // Filter berdasarkan role
+        if ($user->role === 'user') {
             $query->where('user_id', $user->id);
         } elseif ($user->role === 'teknisi') {
             $query->where('assigned_to', $user->id);
         }
+        
 
-        ///admin dan dev bisa melihat semua
-
-        $complaints =  $query->latest()->get();
+        $complaints = $query->latest()->get();
 
         return view('complaints.index', compact('complaints'));
-        
     }
 
     /**
@@ -43,8 +42,8 @@ class ComplaintController extends Controller
 
         $locations = Location::orderBy('room_name')->get();
         $categories = Category::orderBy('name')->get();
-        return view('complaints.create', compact('locations', 'categories'));
         
+        return view('complaints.create', compact('locations', 'categories'));
     }
 
     /**
@@ -57,7 +56,7 @@ class ComplaintController extends Controller
         $validated = $request->validate([
             'kode_barang' => 'nullable|string|max:50',
             'location_id' => 'required|exists:locations,id',
-            'category_id' => 'required|string|exists":categories,id',
+            'category_id' => 'required|exists:categories,id',
             'title' => 'required|string|max:255',
             'description' => 'required|string',
             'photo_path' => 'nullable|image|mimes:jpeg,png,jpg,gif|max:2048',
@@ -66,9 +65,9 @@ class ComplaintController extends Controller
         if ($request->hasFile('photo_path')) {
             $validated['photo_path'] = $request->file('photo_path')->store('complaints', 'public');
         }
+        
         $validated['user_id'] = Auth::id();
         $validated['status'] = 'menunggu';
-
 
         $complaint = Complaint::create($validated);
 
@@ -77,10 +76,11 @@ class ComplaintController extends Controller
             'actor_id' => Auth::id(),
             'old_status' => null,
             'new_status' => 'menunggu',
-            'log_message' => 'Pengaduan dibut oleh pelapor',
+            'log_message' => 'Pengaduan dibuat oleh pelapor.',
         ]);
 
-        return redirect()->route('complaints.show', $complaint->id)->with('success', 'Pengaduan berhassil dikirim');
+        return redirect()->route('complaints.show', $complaint->id)
+            ->with('success', 'Pengaduan berhasil dikirim.');
     }
 
     /**
@@ -90,11 +90,11 @@ class ComplaintController extends Controller
     {
         $this->authorizeView($complaint);
 
+        
         $complaint->load(['user', 'location', 'category', 'assignedTechnician', 'photos', 'logs.actor']);
 
         return view('complaints.show', compact('complaint'));
     }
-
 
     /**
      * Show the form for editing the specified resource.
@@ -103,14 +103,13 @@ class ComplaintController extends Controller
     {
         $this->authorizeUpdate($complaint);
 
-        $technicians = collect(); // ambil teknisi
+        $technicians = collect(); 
 
-        if(Auth::user()->role === 'admin') {
+        if (Auth::user()->role === 'admin') {
             $technicians = User::where('role', 'teknisi')->orderBy('name')->get();
         }
 
-
-        return view('complaint.edit', compact('complaint', 'technicians'));
+        return view('complaints.edit', compact('complaint', 'technicians')); // Typo folder diperbaiki
     }
 
     /**
@@ -122,83 +121,100 @@ class ComplaintController extends Controller
 
         $user = Auth::user();
 
-
+        // Validasi dasar
         $rules = [
-            'new_status' => 'required|in:diproses, selesai, ditolak',
+            'new_status' => 'required|in:diproses,selesai,ditolak',
             'log_message' => 'required|string|max:1000',
         ];
 
-        if($user->role === 'admin' && $request->new_status === 'diproses') {
+        // Validasi tambahan khusus admin jika status diproses
+        if ($user->role === 'admin' && $request->new_status === 'diproses') {
             $rules['assigned_to'] = 'required|exists:users,id';
-
-            $validated = $request->validate($rules);
-
-            $oldstatus = $complaint->status;
-            $newStatus = $validated['new_status'];
-
-            $updateData = ['status' => $newStatus];
-
-            if ($newStatus === 'selesai') {
-                $updateData['resolved_at'] = now();
-            } else {
-                $updateData['resolved_at'] = null;
-            }
-            // assign teknisi hanya boleh dengan admin
-            if ($user->role === 'admin' && $newStatus === 'diproses') {
-                $updateData['assigned_to'] = $validated['assigned_to'];
-            }
-
-            $complaint->update($updateData);
-
-            ComplaintLog::create([
-                'complaint_id' => $complaint->id,
-                'actor_id' => $user->id,
-                'old_status' => $oldstatus,
-                'new_status' => $newStatus,
-                'log_message' => $validated['log_message'],
-            ]);
-
-            return redirect()->route('complaints.show', $complaint->id)->with('succsess', 'Status pengaduan berhasil diperbarui');
         }
-    }
 
-    //helper methods
+        $validated = $request->validate($rules);
+
+        $oldStatus = $complaint->status;
+        $newStatus = $validated['new_status'];
+
+        $updateData = ['status' => $newStatus];
+
+        if ($newStatus === 'selesai') {
+            $updateData['resolved_at'] = now();
+        } else {
+            $updateData['resolved_at'] = null;
+        }
+        
+        // Assign teknisi hanya boleh dilakukan admin
+        if ($user->role === 'admin' && $newStatus === 'diproses') {
+            $updateData['assigned_to'] = $validated['assigned_to'];
+        }
+
+        $complaint->update($updateData);
+
+        ComplaintLog::create([
+            'complaint_id' => $complaint->id,
+            'actor_id' => $user->id,
+            'old_status' => $oldStatus,
+            'new_status' => $newStatus,
+            'log_message' => $validated['log_message'],
+        ]);
+
+        return redirect()->route('complaints.show', $complaint->id)
+            ->with('success', 'Status pengaduan berhasil diperbarui.');
+    }
 
     /**
      * Remove the specified resource from storage.
      */
     public function destroy(Complaint $complaint)
     {
-        if (Auth::user()->role !== 'admin' || Auth::user()->role !== 'dev') {
-            abort(403, 'Anauthorized');
+        // Perbaikan logika OR ke in_array agar admin dan dev bisa menghapus
+        if (!in_array(Auth::user()->role, ['admin', 'dev'])) {
+            abort(403, 'Unauthorized');
         }
 
         $complaint->delete();
 
-        return redirect()->route('complaints.index')->with('success', 'Pengaduan berhasil dihapus');
+        return redirect()->route('complaints.index')->with('success', 'Pengaduan berhasil dihapus.');
     }
 
-    protected function authorizeCreate() {
-        if(!in_array(Auth::user()->role, ['user', 'admin', 'dev']));
-        abort(403, 'anda tidak memiliki izin membuat pengaduan');
-    }
+    // --- HELPER METHODS ---
 
-    protected function authorizeView(Complaint $complaint) {
-        $user = Auth::user();
-
-        if ($user->role === 'user' && $complaint->assigned_to !== $user->id) {
-            abort(403);
+    protected function authorizeCreate()
+    {
+        // Perbaikan penempatan titik koma (;) yang menghentikan proses
+        if (!in_array(Auth::user()->role, ['user', 'admin', 'dev'])) {
+            abort(403, 'Anda tidak memiliki izin membuat pengaduan.');
         }
     }
-    protected function authorizeUpdate(Complaint $complaint) {
+
+    protected function authorizeView(Complaint $complaint)
+    {
+        $user = Auth::user();
+
+        // User hanya bisa melihat aduan buatannya sendiri
+        if ($user->role === 'user' && $complaint->user_id !== $user->id) {
+            abort(403, 'Anda hanya dapat melihat pengaduan milik sendiri.');
+        }
+
+        // Teknisi hanya bisa melihat aduan yang ditugaskan kepadanya
+        if ($user->role === 'teknisi' && $complaint->assigned_to !== $user->id) {
+            abort(403, 'Anda hanya dapat melihat tugas yang ditugaskan kepada Anda.');
+        }
+    }
+
+    protected function authorizeUpdate(Complaint $complaint)
+    {
         $user = Auth::user();
 
         if (!in_array($user->role, ['admin', 'dev', 'teknisi'])) {
-            abort(403);
+            abort(403, 'Anda tidak memiliki izin untuk mengedit pengaduan.');
         }
-        //teknisi hanya bisa mengubah pengaduan yang ditugaskan padanya;
+        
+        // Teknisi hanya bisa mengubah pengaduan yang ditugaskan padanya
         if ($user->role === 'teknisi' && $complaint->assigned_to !== $user->id) {
-            abort(403);
+            abort(403, 'Anda hanya dapat mengedit tugas yang ditugaskan kepada Anda.');
         }
     }
 }

@@ -33,10 +33,10 @@ class UserController extends Controller
             });
         }
 
-        // Dev tidak boleh melihat teknisi
-        if (Auth::user()->role === 'dev') {
-            $query->where('role', '!=', 'teknisi');
-        }
+        
+        // if (Auth::user()->role === 'dev' || Auth::user()->role === 'dev') {
+        //     $query->where('role', '!=', 'teknisi');
+        // }
 
         $users = $query->get();
 
@@ -65,9 +65,9 @@ class UserController extends Controller
             'password' => 'required|string|min:8|confirmed',
         ]);
 
-        // Dev tidak boleh membuat akun teknisi
-        if (Auth::user()->role === 'dev' && $validated['role'] === 'teknisi') {
-            abort(403, 'Dev tidak dapat membuat akun teknisi.');
+        
+        if (Auth::user()->role === 'user' && $validated['role'] === 'teknisi') {
+            abort(403, 'Tidak dapat membuat akun teknisi.');
         }
 
         $validated['password'] = Hash::make($validated['password']);
@@ -83,8 +83,8 @@ class UserController extends Controller
      */
     public function show(User $user)
     {
-        if (Auth::user()->role === 'dev' && $user->role === 'teknisi') {
-            abort(403, 'Dev tidak dapat melihat detail akun teknisi.');
+        if (Auth::user()->role === 'user' && $user->role === 'teknisi') {
+            abort(403, 'User tidak dapat melihat detail akun teknisi.');
         }
 
         return view('users.show', compact('user'));
@@ -96,8 +96,8 @@ class UserController extends Controller
     public function edit(User $user)
     {
         // Dev tidak boleh mengedit teknisi
-        if (Auth::user()->role === 'dev' && $user->role === 'teknisi') {
-            abort(403, 'Dev tidak dapat mengedit akun teknisi.');
+        if (Auth::user()->role === 'user' && $user->role === 'teknisi') {
+            abort(403, 'User tidak dapat mengedit akun teknisi.');
         }
 
         return view('users.edit', compact('user'));
@@ -109,8 +109,8 @@ class UserController extends Controller
     public function update(Request $request, User $user)
     {
         // Dev tidak boleh mengedit teknisi
-        if (Auth::user()->role === 'dev' && $user->role === 'teknisi') {
-            abort(403, 'Dev tidak dapat mengedit akun teknisi.');
+        if (Auth::user()->role === 'user' && $user->role === 'teknisi') {
+            abort(403, 'User tidak dapat mengedit akun teknisi.');
         }
 
         $validated = $request->validate([
@@ -163,8 +163,8 @@ class UserController extends Controller
         }
 
         // Dev tidak boleh menghapus teknisi
-        if (Auth::user()->role === 'dev' && $user->role === 'teknisi') {
-            abort(403, 'Dev tidak dapat menghapus akun teknisi.');
+        if (Auth::user()->role === 'user' && $user->role === 'teknisi') {
+            abort(403, 'user tidak dapat menghapus akun teknisi.');
         }
 
         // Cegah penghapusan jika teknisi sedang ditugaskan (opsional, untuk integritas)
@@ -185,8 +185,8 @@ class UserController extends Controller
      */
     public function verify(User $user)
     {
-        if (Auth::user()->role === 'dev' && $user->role === 'teknisi') {
-            abort(403, 'Dev tidak dapat memverifikasi akun teknisi.');
+        if (Auth::user()->role === 'user' && $user->role === 'teknisi') {
+            abort(403, 'user tidak dapat memverifikasi akun teknisi.');
         }
 
         if (empty($user->nomor_identitas)) {
