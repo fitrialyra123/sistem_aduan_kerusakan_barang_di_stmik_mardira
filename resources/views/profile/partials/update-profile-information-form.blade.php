@@ -23,6 +23,18 @@
             <x-input-error class="mt-2" :messages="$errors->get('name')" />
         </div>
 
+       <div class="mt-4">
+            <x-input-label for="phone" :value="__('Nomor Telepon')" />  
+            <x-text-input id="phone" class="block mt-1 w-full" type="text" name="phone" :value="old('phone')" autocomplete="username" />
+            <x-input-error :messages="$errors->get('phone')" class="mt-2" />
+        </div>
+
+        <div class="mt-4">
+            <x-input-label for="nomor_identitas" :value="__('Nomor Identias (NIM/NIK/NIDN)')" />  
+            <x-text-input id="nomor_identitas" class="block mt-1 w-full" type="text" name="nomor_identitas" :value="old('nomor_identitas')" autocomplete="username" />
+            <x-input-error :messages="$errors->get('nomor_identitas')" class="mt-2" />
+        </div>
+        
         <div>
             <x-input-label for="email" :value="__('Email')" />
             <x-text-input id="email" name="email" type="email" class="mt-1 block w-full" :value="old('email', $user->email)" required autocomplete="username" />
